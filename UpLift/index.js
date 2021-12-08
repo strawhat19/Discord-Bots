@@ -1,6 +1,8 @@
 import Discord from "discord.js";
 import fetch from "node-fetch";
+import TOKEN, { config } from "dotenv";
 const client = new Discord.Client();
+const token = TOKEN.config().parsed.TOKEN;
 
 const openingMessage = `UpLift is Online! This is a Discord Bot by Rakib Ahmed, https://github.com/strawhat19, to inspire you or motivate you when you're feeling down. Just type 'inspire me' into the chat and the bot will give you an inspirational quote to lift your mood!`;
 
@@ -29,5 +31,4 @@ client.on('message', msg => {
     }
 })
 
-// To invite this bot to your discord server, use this link => https://discord.com/oauth2/authorize?client_id=918103501039611915&scope=bot&permissions=1099511627775
-client.login(process.env.TOKEN);
+client.login(token);
