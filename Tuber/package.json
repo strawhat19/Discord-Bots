@@ -1,0 +1,22 @@
+{
+  "name": "discord-bots",
+  "version": "1.0.0",
+  "description": "A repo for different Discord Bots",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/strawhat19/Discord-Bots.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/strawhat19/Discord-Bots/issues"
+  },
+  "homepage": "https://github.com/strawhat19/Discord-Bots#readme",
+  "dependencies": {
+    "discord.js": "^12.5.3"
+  }
+}
