@@ -4,15 +4,21 @@
 
 A collection of different Discord Bots I am developing.
 
-UpLift - A bot to inspire you or motivate you when you're feeling down.
-
 ## UpLift
+
+A bot to inspire you or motivate you when you're feeling down.
 
 ![Screenshot of UpLift Bot](./UpLift/assets/screenshotUpLift.JPG)
 
+## WOTD
+
+A bot to provide your server with a random word of the day to help increase your vocabulary!
+
+![Screenshot of Word of the Day Bot](./UpLift/assets/screenshotWOTD.JPG)
+
 ## Table of Contents  
-* [Installation](#installation)  
-* [Usage](#usage) 
+* [Installation](#installation)
+* [Usage](#usage)
 * [Tests](#tests)
 * [Contributors](#contributors)
 * [Contributions](#contributions)
@@ -22,16 +28,21 @@ UpLift - A bot to inspire you or motivate you when you're feeling down.
 ## Installation
 ```
 git clone git@github.com:strawhat19/Discord-Bots.git
-cd UpLift
+cd UpLift || cd WOTD
 npm install
 node index.js
 ```
 
-Or To invite this bot to your discord server, use this link:
+To invite UpLift bot to your discord server, use this link:
 https://discord.com/oauth2/authorize?client_id=918103501039611915&scope=bot&permissions=1099511627775
 
+To invite WOTD bot to your discord server, use this link:
+https://discord.com/oauth2/authorize?client_id=918315096885833749&scope=bot&permissions=1099511627775
+
 ## Usage
-#### Once you invite the bot to your discord server, make sure its online then just type 'inspire me' in any chat in your server.
+#### UpLift: Once you invite the bot to your discord server, make sure its online then just type 'inspire me' in any chat in your server.
+
+#### WOTD: Once you invite the bot to your discord server, make sure its online then just type 'wotd' or 'WOTD' in any chat in your server.
 
 ## Tests
 #### Jest & NPM Tests were used to ensure quality on this Application.

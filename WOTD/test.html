@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        const wordFetch = async (def) => {
+            fetch("https://wordsapiv1.p.rapidapi.com/words/?random=true", {
+                "method": "GET",
+                "headers": {
+                    "x-rapidapi-host": "wordsapiv1.p.rapidapi.com",
+                    "x-rapidapi-key": "e43c917073msh25c6997fc69379fp1d4f8ejsne585d50edca3"
+                }
+            })
+            .then(response => response.json())
+            .then(word => {
+                if (word.results) {
+                    def = word.word + ' - ' + word.results[0].definition;
+                    localStorage.setItem(`Word of the Day`, def)
+                    return def
+                } else {
+                    wordFetch()
+                }
+            })
+            .catch(err => {
+                console.error(err);
+            });
+        }
+
+        wordFetch().then(() => console.log(localStorage.getItem(`Word of the Day`)))
+        
+    </script>
+</body>
+</html>
