@@ -1,3 +1,4 @@
+import moment from "moment";
 import fetch from "node-fetch";
 const client = new Discord.Client();
 import TOKEN, { config } from "dotenv";
@@ -14,6 +15,7 @@ let players = [
     losses: 0,
     level: 1,
     experience: 1,
+    record: [],
   },
   {
     name: `Sally`,
@@ -21,6 +23,7 @@ let players = [
     losses: 0,
     level: 1,
     experience: 1,
+    record: [],
   },
   {
     name: `Charlie`,
@@ -28,6 +31,7 @@ let players = [
     losses: 0,
     level: 1,
     experience: 1,
+    record: [],
   },
 ];
 
@@ -43,12 +47,13 @@ const sendTable = (msg) => {
     ${players
       .map((plyr, plyrIndex) => {
         return `
-            > **${plyr.name}**       Level: ${plyr.level}       Exp: ${plyr.experience}      Wins: ${plyr.wins}         Losses: ${plyr.losses}
+          > **${plyr.name}**       Level: ${plyr.level}       Exp: ${plyr.experience}      Wins: ${plyr.wins}         Losses: ${plyr.losses}
         `;
       })
       .join(``)}
   `;
   msg.channel.send(table);
+  msg.channel.send(JSON.stringify(players));
 }
 
 client.on("message", (msg) => {
@@ -69,9 +74,13 @@ client.on("message", (msg) => {
         players = players.map((plyr) => {
           if (plyr.name.toLowerCase() == playerOne.toLowerCase()) {
             plyr.wins = plyr.wins + 1;
+            plyr.record.push(`Win over ${playerTwo.charAt(0).toUpperCase() +
+              playerTwo.slice(1).toLowerCase()} on ${moment().format(`MMMM Do YYYY, h:mm:ss a`)}`);
             return plyr;
           } else if (plyr.name.toLowerCase() == playerTwo.toLowerCase()) {
             plyr.losses = plyr.losses + 1;
+            plyr.record.push(`Lost to ${playerOne.charAt(0).toUpperCase() +
+              playerOne.slice(1).toLowerCase()} on ${moment().format(`MMMM Do YYYY, h:mm:ss a`)}`);
             return plyr;
           } else {
             return plyr;
@@ -94,6 +103,7 @@ client.on("message", (msg) => {
             losses: 0,
             level: 1,
             experience: 1,
+            record: []
           });
           sendTable(msg);
         }
