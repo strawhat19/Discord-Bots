@@ -1,66 +1,196 @@
 import moment from "moment";
-import fetch from "node-fetch";
+import { config } from "dotenv";
+config();
 const client = new Discord.Client();
-import TOKEN, { config } from "dotenv";
-const token = TOKEN.config().parsed.TOKEN;
 import Discord, { MessageAttachment, MessageEmbed } from "discord.js";
+import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+const firebaseConfig = {
+  appId: process.env.APPID,
+  apiKey: process.env.APIKEY,
+  projectId: process.env.PROJECTID,
+  authDomain: process.env.AUTHDOMAIN,
+  storageBucket: process.env.STORAGEBUCKET,
+  messagingSenderId: process.env.MESSAGINGSENDERID,
+};
+const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
+export default app;
+import { doc, setDoc, collection, getDocs, onSnapshot } from 'firebase/firestore';
 
 let verifiedUsers = [`strawhat19`, `xuruko`, `kayfoxii`];
 let tableCommands = [`!results`, `!res`, `!table`, `!tab`, `!scores`, `!players`, `!leaderboard`];
 
 const channels = {
-  hotBoxDropBox: `908528224521306153`,
+  hotBoxDropBox: `1123103995829964861`,
+  // hotBoxDropBox: `908528224521306153`,
   brotherhoodBotTesting: `1123103995829964861`,
 }
 
-let players = [
-  {
-    name: `Ruko`,
-    wins: 0,
-    losses: 0,
-    level: 1,
-    experience: 0,
-    record: [],
-  },
-  {
-    name: `Kay`,
-    wins: 0,
-    losses: 0,
-    level: 1,
-    experience: 0,
-    record: [],
-  },
-  {
-    name: `Ricky`,
-    wins: 0,
-    losses: 0,
-    level: 1,
-    experience: 0,
-    record: [],
-  },
-];
-
-client.once(`ready`, () => {
-  client.channels.cache.get(channels.brotherhoodBotTesting).send(`RukoBot is Online! Ready to start accepting commands!`);
-});
-
-client.on(`disconnect`, () => {
-  client.channels.cache.get(channels.brotherhoodBotTesting).send(`RukoBot is Going Offline! Goodbye Bröthērs!`);
-});
-
-const sendTable = (msg) => {
-  const table = `
-    > **Results Table**
-    > **Name**           Level          Experience        Wins             Losses
-    ${players.sort((plyr1, plyr2) => plyr2.experience - plyr1.experience).map((plyr, plyrIndex) => {
-        return `
-          > **${plyr.name}**       Level: ${plyr.level}       Exp: ${plyr.experience}      Wins: ${plyr.wins}         Losses: ${plyr.losses}
-        `;
-      }).join(``)
-    }
-  `;
-  msg.channel.send(table);
+const getTimezone = (date) => {
+  const timeZoneString = new Intl.DateTimeFormat(undefined, {timeZoneName: `short`}).format(date);
+  const match = timeZoneString.match(/\b([A-Z]{3,5})\b/);
+  return match ? match[1] : ``;
 }
+
+const formatDate = (date, specificPortion) => {
+  let hours = date.getHours();
+  let minutes = date.getMinutes();
+  let ampm = hours >= 12 ? `PM` : `AM`;
+  hours = hours % 12;
+  hours = hours ? hours : 12; // the hour `0` should be `12`
+  minutes = minutes < 10 ? `0` + minutes : minutes;
+  let strTime = hours + `:` + minutes + ` ` + ampm;
+  let strTimeNoSpaces = hours + `:` + minutes + `_` + ampm;
+  let completedDate = strTime + ` ` + (date.getMonth() + 1) + `/` + date.getDate() + `/` + date.getFullYear();
+  let timezone = getTimezone(date);
+
+  if (specificPortion == `time`) {
+    completedDate = strTime;
+  } else if (specificPortion == `date`) {
+    completedDate = (date.getMonth() + 1) + `-` + date.getDate() + `-` + date.getFullYear();
+  } else if (specificPortion == `timezone`) {
+    completedDate = strTime + ` ` + (date.getMonth() + 1) + `-` + date.getDate() + `-` + date.getFullYear() + ` ` + timezone;
+  } else if (specificPortion == `timezoneNoSpaces`) {
+    completedDate = strTimeNoSpaces + `_` + (date.getMonth() + 1) + `-` + date.getDate() + `-` + date.getFullYear() + `_` + timezone;
+  } else {
+    completedDate = strTime + ` ` + (date.getMonth() + 1) + `-` + date.getDate() + `-` + date.getFullYear() + ` ` + timezone;
+  }
+
+  return completedDate;
+};
+
+const generateUniqueID = (existingIDs) => {
+  const generateID = () => {
+    let id = Math.random().toString(36).substr(2, 9);
+    return Array.from(id).map(char => {
+      return Math.random() > 0.5 ? char.toUpperCase() : char;
+    }).join(``);
+  };
+  let newID = generateID();
+  if (existingIDs && existingIDs.length > 0) {
+    while (existingIDs.includes(newID)) {
+      newID = generateID();
+    }
+  }
+  return newID;
+};
+
+let players = [];
+const addPlayerToDB = async (playerObj) => await setDoc(doc(db, `players`, playerObj?.ID), playerObj);
+
+export const calcPlayerWins = (plyr) => plyr.plays.filter(ply => ply.winner.toLowerCase() == plyr.name.toLowerCase()).length;
+export const calcPlayerLosses = (plyr) => plyr.plays.filter(ply => ply.loser.toLowerCase() == plyr.name.toLowerCase()).length;
+
+export const getActivePlayersFromDatabase = async () => {
+  try {
+    const playersSnapshot = await getDocs(collection(db, `players`));
+    const activePlayers = playersSnapshot.docs.map(doc => doc.data()).filter(plyr => !plyr.disabled).sort((a,b) => {
+      if (b.experience.arenaXP !== a.experience.arenaXP) {
+        return b.experience.arenaXP - a.experience.arenaXP;
+      }
+      return b.plays.length - a.plays.length;
+    });
+    return activePlayers;
+  } catch (error) {
+    return error;
+  }
+}
+
+const createPlayer = (playerName, playerIndex, databasePlayers) => {
+  let currentDateTimeStamp = formatDate(new Date());
+  let uniqueIndex = databasePlayers.length + 1 + playerIndex;
+  let currentDateTimeStampNoSpaces = formatDate(new Date(), `timezoneNoSpaces`);
+  let uuid = generateUniqueID(databasePlayers.map(plyr => plyr?.uuid || plyr?.id));
+  let displayName = playerName.charAt(0).toUpperCase() + playerName.slice(1).toLowerCase();
+  let id = `${uniqueIndex}_Player_${displayName}_${currentDateTimeStampNoSpaces}_${uuid}`;
+  let ID = `${uniqueIndex} ${displayName} ${currentDateTimeStamp} ${uuid}`;
+  let playerObj = {
+    id,
+    ID,
+    uuid,
+    displayName,
+    expanded: false,
+    playerLink: false,
+    name: displayName,
+    lastUpdatedBy: id,
+    plays: [],
+    created: currentDateTimeStamp,
+    updated: currentDateTimeStamp,
+    lastUpdated: currentDateTimeStamp,
+    level: {
+      num: 1,
+      name: `Bronze Scimitar`
+    },
+    roles: [
+      {
+        promoted: currentDateTimeStamp,
+        name: `Player`,
+        level: 1,
+      }
+    ],
+    experience: {
+      xp: 0,
+      arenaXP: 0,
+      nextLevelAt: 83,
+      remainingXP: 83
+    },
+  };
+  return playerObj;
+}
+
+const createPlayers = async (splitUpMessageParams) => {
+  let channel = client.channels.cache.get(channels.hotBoxDropBox);
+  let activeDatabasePlayers = await getActivePlayersFromDatabase();
+  let playersToAdd = splitUpMessageParams.filter((comm, commIndex) => commIndex != 0 && comm);
+  [...new Set(playersToAdd)].forEach((plyr, plyrIndex) => {
+    let playerObj = createPlayer(plyr, plyrIndex, activeDatabasePlayers);
+    if (!activeDatabasePlayers.map(playr => playr.name.toLowerCase()).some(nam => nam == plyr.toLowerCase())) {
+      addPlayerToDB(playerObj);
+      sendTable();
+      return playerObj;
+    } else {
+      channel.send(`Player(s) with those name(s) already exist.`);
+      return;
+    }
+  });
+}
+
+const sendTable = async (msg, playrsFrmDB) => {
+  playrsFrmDB = await getActivePlayersFromDatabase();
+  let IDEnabled = true;
+  let createdUUIDEnabled = false;
+  let channel = client.channels.cache.get(channels.hotBoxDropBox);
+  if (playrsFrmDB.length > 0) {
+    channel.send(`
+      > **Results Table** (please give it time to process data)
+      > **Rank**           **Name**           **Level**          **Experience**        **Wins**             **Losses**
+    `);
+
+    playrsFrmDB.map((plyr, plyrIndex) => {
+      return channel.send(`
+      > **${plyrIndex + 1}**       **${plyr.name}**       **Level:** ${plyr.level.num} *${plyr.level.name}*       **Exp:** *${plyr.experience.arenaXP}*      **Wins:** *${calcPlayerWins(plyr)}*         **Losses:** *${calcPlayerLosses(plyr)}*
+      > **ID**: *${plyr.ID}*
+    `);
+    }).join(``)
+  }
+}
+
+// const sendTableFromDatabase = (playrsFrmDB) => {
+//   let channel = client.channels.cache.get(channels.hotBoxDropBox);
+//   if (playrsFrmDB.length > 0) {
+//     channel.send(`
+//       > **Results Table**
+//       > **Rank**           **Name**           Level          Experience        Wins             Losses
+//     `);
+
+//     playrsFrmDB.map((plyr, plyrIndex) => {
+//       return channel.send(`
+//       > **${plyrIndex + 1}**       **${plyr.name}**       Level: ${plyr.level.name}-${plyr.level.num}       Exp: ${plyr.experience.arenaXP}      Wins: ${calcPlayerWins(plyr)}         Losses: ${calcPlayerLosses(plyr)}
+//     `);
+//     }).join(``)
+//   }
+// }
 
 const resetPlayers = (msg) => {
   players = [
@@ -91,6 +221,40 @@ const resetPlayers = (msg) => {
   ];
 }
 
+client.once(`ready`, () => {
+  console.log(`RukoBot is Online! Ready to start accepting commands!`);
+  client.channels.cache.get(channels.hotBoxDropBox).send(`RukoBot is Online! Ready to start accepting commands!`);
+  
+  // const unsubscribeFromSmasherScapeSnapShot = onSnapshot(collection(db, `players`), (querySnapshot) => {
+  //   const playersFromDatabase = [];
+  //   querySnapshot.forEach((doc) => playersFromDatabase.push(doc.data()));
+  //   players = playersFromDatabase.filter(plyr => !plyr.disabled).sort((a,b) => {
+  //     if (b.experience.arenaXP !== a.experience.arenaXP) {
+  //       return b.experience.arenaXP - a.experience.arenaXP;
+  //     }
+  //     return b.plays.length - a.plays.length;
+  //   });
+  //   sendTableFromDatabase(playersFromDatabase.filter(plyr => !plyr.disabled).sort((a,b) => {
+  //     if (b.experience.arenaXP !== a.experience.arenaXP) {
+  //       return b.experience.arenaXP - a.experience.arenaXP;
+  //     }
+  //     return b.plays.length - a.plays.length;
+  //   }));
+  // });
+
+  // process.on(`SIGINT`, () => {
+  //   client.channels.cache.get(channels.hotBoxDropBox).send(`RukoBot is Going Offline! Goodbye Bröthērs!`);
+  //   unsubscribeFromSmasherScapeSnapShot();
+  //   client.destroy();
+  //   process.exit();
+  // });
+});
+
+client.on(`disconnect`, () => {
+  console.log(`RukoBot is Going Offline! Goodbye Bröthērs!`);
+  client.channels.cache.get(channels.hotBoxDropBox).send(`RukoBot is Going Offline! Goodbye Bröthērs!`);
+});
+
 client.on(`message`, (msg) => {
   if (msg.author.bot) {
     return;
@@ -103,7 +267,7 @@ client.on(`message`, (msg) => {
         msg.channel.send(`Here are the RukoBot commands so far: [!add + name] to add a player, [!delete + name] to delete a player, [!results, !res, !table, !tab, !scores, !players, !leaderboard] to see Leaderboard. [!update + player one name + 'beats' + player two name + loser stocks taken] to update table, [!reset] to reset players back to 0 XP.`);
       } else if (tableCommands.includes(msg.content.toLowerCase())) {
         sendTable(msg);
-      } else if (msg.content.toLowerCase().includes(`!update`)) {
+      } else if (msg.content.toLowerCase().includes(`!upd`)) {
         let splitUpMessageParams = msg.content.split(` `);
         let playerOne = splitUpMessageParams[1];
         let middleWord = splitUpMessageParams[2];
@@ -172,23 +336,23 @@ client.on(`message`, (msg) => {
       } else if (msg.content.toLowerCase().split(` `)[0] == `!add`) {
         let splitUpMessageParams = msg.content.split(` `);
         let playerToAdd = splitUpMessageParams[1];
-
         if (playerToAdd) {
-          if (players.map((plyr) => plyr.name).includes(playerToAdd.toLowerCase())) {
-            msg.channel.send(`This player is already in the table!`);
-          } else {
-            players.push({
-              name:
-                playerToAdd.charAt(0).toUpperCase() +
-                playerToAdd.slice(1).toLowerCase(),
-              wins: 0,
-              losses: 0,
-              level: 1,
-              experience: 0,
-              record: []
-            });
-            sendTable(msg);
-          }
+          createPlayers(splitUpMessageParams);
+          // if (players.map((plyr) => plyr.name).includes(playerToAdd.toLowerCase())) {
+          //   msg.channel.send(`This player is already in the table!`);
+          // } else {
+          //   players.push({
+          //     name:
+          //       playerToAdd.charAt(0).toUpperCase() +
+          //       playerToAdd.slice(1).toLowerCase(),
+          //     wins: 0,
+          //     losses: 0,
+          //     level: 1,
+          //     experience: 0,
+          //     record: []
+          //   });
+          //   sendTable(msg);
+          // }
         } else {
           msg.channel.send(`Please add a player name after the !add, like [!add playerName].`);
         }
@@ -237,4 +401,4 @@ client.on(`message`, (msg) => {
   }
 });
 
-client.login(token);
+client.login(process.env.TOKEN);
