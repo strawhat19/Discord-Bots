@@ -4,6 +4,13 @@ import TOKEN, { config } from "dotenv";
 const token = TOKEN.config().parsed.TOKEN;
 import Discord, { MessageAttachment, MessageEmbed } from "discord.js";
 
+const channelIDs = {
+  general: `312316512973357057`,
+  hotboxDropbox: `908528224521306153`,
+}
+
+const channelToUse = channelIDs.hotboxDropbox;
+
 const openingMessage = `UpLift is Online! This is a Discord Bot by Rakib Ahmed, https://github.com/strawhat19, to inspire you or motivate you when you're feeling down. Just type 'inspire me' into the chat and the bot will give you an inspirational quote to lift your mood!`;
 
 const getQuotes = () => {
@@ -41,10 +48,7 @@ let players = [
 ];
 
 client.once("ready", () => {
-  // Hotbox DropBox Channel
-  client.channels.cache.get("908528224521306153").send(openingMessage);
-  // General Channel
-  // client.channels.cache.get('312316512973357057').send(openingMessage);
+  client.channels.cache.get(channelToUse).send(openingMessage);
   console.log(openingMessage);
 });
 
