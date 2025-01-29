@@ -10,11 +10,10 @@ const channelIDs = {
     hotboxDropbox: `908528224521306153`,
 }
 
-const sendOpeningMessage = false;
+const sendOpeningMessage = true;
 const channelToUse = channelIDs.hotboxDropbox;
 
 const randomWordAPIURL = `https://random-word-api.vercel.app/api`;
-const openingCommands = [`op`, `opn`, `open`, `opening`, `message`];
 const dictionaryAPIURL = `https://api.dictionaryapi.dev/api/v2/entries/en`;
 const commands = [`w`, `wr`, `wd`, `wrd`, `wotd`, `word`, `wordd`, `generate word`, `word of the day`];
 
@@ -25,7 +24,7 @@ const openingMessage = `
 
 const capWords = (str) => str.replace(/\b\w/g, (match) => match.toUpperCase());
 const sendMessageToChannel = (message, channelID = channelToUse) => client.channels.cache.get(channelID).send(message);
-const matchesString = (input, array) => array.map(s => s.toLowerCase().replace(/[^a-z0-9]/g, ``)).includes(input.toLowerCase().replace(/[^a-z0-9]/g, ``));
+const matchesCommand = (input, array) => array.map(s => s.toLowerCase().replace(/[^a-z0-9]/g, ``)).includes(input.toLowerCase().replace(/[^a-z0-9]/g, ``));
 
 const getWord = async () => {
     return await fetch(randomWordAPIURL)
@@ -61,12 +60,9 @@ client.on(`message`, async msg => {
     if (msg.author.bot) return;
     
     const usersInput = msg.content;
-    const matchesWOTDCommand = matchesString(usersInput, commands);
-    const matchesOpeningCommand = matchesString(usersInput, openingCommands);
+    const isGenerateWordCommand = matchesCommand(usersInput, commands);
 
-    if (matchesOpeningCommand) {
-        sendMessageToChannel(openingMessage);
-    } else if (matchesWOTDCommand) {
+    if (isGenerateWordCommand) {
         await getWord().then(async word => {
             if (word) {
                 let wotd = word;
